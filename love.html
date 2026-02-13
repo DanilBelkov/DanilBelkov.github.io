@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Валентинка для любимого</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        /* Общий контейнер, чтобы вся открытка вела себя как единое целое */
+        .card {
+            position: relative;
+            width: min(90vw, 360px);
+            aspect-ratio: 320 / 430;
+            perspective: 800px; /* для 3D-поворота полосок */
+            --stripW: min(78vw, 260px);
+            --stripH: 42px;
+        }
+        .envelope {
+            position: absolute;
+            inset: 0;
+            cursor: pointer;
+            overflow: visible;
+        }
+        .envelope-back {
+            width: 100%;
+            height: 100%;
+            background: #ff1744;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(255, 23, 68, 0.3);
+            position: relative;
+            overflow: hidden;
+            transition: background-color 0.3s ease;
+        }
+        /* Сам конверт внутри открытки (делаем его цельным) */
+        .envelope-back::after {
+            content: '';
+            position: absolute;
+            left: 24px;
+            right: 24px;
+            top: 70px;
+            height: 80px;
+            background: #ffe4ec;
+            border-radius: 10px 10px 0 0;
+            z-index: 1;
+        }
+        .envelope-back::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            right: 24px;
+            top: 130px;
+            height: 90px;
+            background: #ffe4ec;
+            clip-path: polygon(0 0, 50% 100%, 100% 0);
+            z-index: 1;
+        }
+        .flap {
+            position: absolute;
+            left: 24px;
+            right: 24px;
+            top: 70px;
+            height: 90px;
+            background: #ffe4ec;
+            clip-path: polygon(0 0, 100% 0, 50% 80%);
+            z-index: 2;
+            transform-origin: top center;
+            transition: transform 0.5s ease;
+            backface-visibility: hidden;
+            border-radius: 10px 10px 0 0;
+        }
+        .flap::after {
+            content: '❤ ❤ ❤';
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+            color: #ff1744;
+            transition: color 0.3s ease;
+        }
+        .flap.clicked::after {
+            color: #ffd700;
+        }
+        /* Контейнер для всех отрывных полосок */
+        .strips {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 250px;
+        }
+        /* Ряд для отрывной полоски и подписи под ней */
+        .strip-row {
+            position: relative;
+            height: var(--stripH);
+            margin-bottom: 14px;
+        }
+        /* Отрывные полоски, которые накрывают подписи (перелистывание как лист бумаги) */
+        .tear-strip {
+            position: absolute;
+            width: var(--stripW);
+            height: var(--stripH);
+            background: transparent;
+            border-radius: 999px;
+            transition: transform 0.9s cubic-bezier(0.2, 0.9, 0.2, 1);
+            z-index: 3;
+            user-select: none;
+            left: 50%;
+            transform: translateX(-50%) rotateY(0deg);
+            transform-origin: left center;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+        .tear-face {
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            backface-visibility: hidden;
+        }
+        .tear-front {
+            background: #ff1744;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        .tear-front::before {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: min(90px, 35%);
+            background: linear-gradient(135deg, #ff4569, #ff1744);
+            border-radius: 0 999px 999px 0;
+        }
+        .tear-back {
+            background: #c9193b;
+            transform: rotateY(180deg);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .strip-text {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: var(--stripW);
+            height: var(--stripH);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: #d81b60;
+            background: #fff5f8;
+            border-radius: 999px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            opacity: 0;
+            transition: opacity 0.3s ease 0.3s;
+            z-index: 2;
+            pointer-events: none;
+        }
+        .strip-row.torn .strip-text {
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        .strip-row.torn .strip-text {
+            opacity: 1;
+            transition-delay: 0.25s;
+        }
+        .tear-strip.torn {
+            transform: translateX(-50%) rotateY(165deg);
+        }
+        .heart {
+            position: absolute;
+            top: 70%;
+            left: 50%;
+            width: 150px;
+            height: 150px;
+            background: #ff4081;
+            z-index: 1;
+            transition: all 0.8s ease;
+            transform: translate(-50%, -50%) rotate(-45deg) scale(0);
+            border-radius: 14px;
+        }
+        .heart.revealed {
+            transform: translate(-50%, -50%) rotate(-45deg) scale(1);
+            animation: heartbeat 1.5s infinite;
+        }
+        .heart:before,
+        .heart:after {
+            content: '';
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background: inherit;
+            border-radius: 50%;
+        }
+        .heart:before {
+            top: -55px;
+            left: 0;
+        }
+        .heart:after {
+            top: 0;
+            left: 55px;
+        }
+        .title {
+            position: absolute;
+            bottom: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            color: #d81b60;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        .title.show {
+            opacity: 1;
+        }
+        @keyframes heartbeat {
+            0%, 100% { transform: translate(-50%, -50%) rotate(-45deg) scale(1); }
+            50% { transform: translate(-50%, -50%) rotate(-45deg) scale(1.1); }
+        }
+        @media (max-width: 480px) {
+            .card {
+                width: 95vw;
+                --stripW: min(86vw, 230px);
+                --stripH: 38px;
+            }
+            .envelope-back::after,
+            .envelope-back::before,
+            .flap {
+                left: 18px;
+                right: 18px;
+            }
+            .strip-row { margin-bottom: 12px; }
+            .strip-text { font-size: 16px; }
+            .tear-back::after { font-size: 16px; letter-spacing: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="envelope" id="envelope">
+            <div class="envelope-back"></div>
+            <div class="flap" id="flap"></div>
+
+            <div class="strips">
+                <div class="strip-row">
+                    <div class="tear-strip" data-text="я">
+                        <span class="tear-face tear-front" aria-hidden="true"></span>
+                        <span class="tear-face tear-back" aria-hidden="true"></span>
+                    </div>
+                    <div class="strip-text">я</div>
+                </div>
+                <div class="strip-row">
+                    <div class="tear-strip" data-text="тебя">
+                        <span class="tear-face tear-front" aria-hidden="true"></span>
+                        <span class="tear-face tear-back" aria-hidden="true"></span>
+                    </div>
+                    <div class="strip-text">тебя</div>
+                </div>
+                <div class="strip-row">
+                    <div class="tear-strip" data-text="люблю">
+                        <span class="tear-face tear-front" aria-hidden="true"></span>
+                        <span class="tear-face tear-back" aria-hidden="true"></span>
+                    </div>
+                    <div class="strip-text">люблю</div>
+                </div>
+            </div>
+
+            <div class="heart" id="heart"></div>
+        </div>
+    </div>
+
+    <script>
+        const envelope = document.getElementById('envelope');
+        const stripRows = document.querySelectorAll('.strip-row');
+        const heart = document.getElementById('heart');
+        const title = document.getElementById('title');
+        const flap = document.getElementById('flap');
+
+        let tornCount = 0;
+
+        function updateHeartAndTitle() {
+            if (tornCount === stripRows.length) {
+                setTimeout(() => {
+                    heart.classList.add('revealed');
+                    setTimeout(() => {
+                        if (title) title.classList.add('show');
+                    }, 500);
+                }, 500);
+            } else {
+                heart.classList.remove('revealed');
+                if (title) title.classList.remove('show');
+            }
+        }
+
+        stripRows.forEach((row) => {
+            const strip = row.querySelector('.tear-strip');
+            const stripText = row.querySelector('.strip-text');
+
+            function toggleStrip() {
+                const isTorn = strip.classList.contains('torn');
+                
+                if (isTorn) {
+                    // Закрываем полоску
+                    strip.classList.remove('torn');
+                    row.classList.remove('torn');
+                    tornCount--;
+                } else {
+                    // Открываем полоску
+                    strip.classList.add('torn');
+                    row.classList.add('torn');
+                    tornCount++;
+                }
+                
+                updateHeartAndTitle();
+            }
+
+            strip.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleStrip();
+            });
+
+            stripText.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleStrip();
+            });
+        });
+
+        flap.addEventListener('click', (e) => {
+            if (e.target === flap) {
+                flap.classList.toggle('clicked');
+            }
+        });
+    </script>
+</body>
+</html>
